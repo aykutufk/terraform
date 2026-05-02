@@ -1,0 +1,38 @@
+# Terraform
+**/.terraform/*
+*.tfstate
+*.tfstate.*
+
+# Logs
+crash.log
+crash.*.log
+
+# Sensitive vars
+*.tfvars
+*.tfvars.json
+
+# Override
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# CLI config
+.terraformrc
+terraform.rc
+
+# Vault / backup
+*.snap
+
+# 🔐 Credentials (spesifik)
+*-key.json
+*credentials*.json
+service-account*.json
+
+# Secret folders
+secrets/
+credentials/
+
+# Env
+.env
+.env.*

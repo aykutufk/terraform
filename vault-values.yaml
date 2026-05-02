@@ -1,0 +1,51 @@
+server:
+  # 🎯 Podların hangi node'da çalışacağı (Kendi tercihin olan "application"da tuttum)
+  nodeSelector:
+    layer: "application"
+
+  # 🎯 Workload Identity için bağladığımız Service Account
+  serviceAccount:
+    create: false
+    name: vault-sa
+
+  # 🎯 HA + Raft Yapılandırması
+  ha:
+    enabled: true
+    replicas: 2
+    raft:
+      enabled: true
+      setNodeId: true # Kubernetes pod ismini Raft node ID'si yapar (Kritik!)
+      config: |
+        ui = true
+
+        listener "tcp" {
+          address = "[::]:8200"
+          cluster_address = "[::]:8201"
+          tls_disable = 1
+        }
+
+        storage "raft" {
+          path = "/vault/data"
+        }
+
+        # 🚀 Auto-unseal bloğu burada olmalı
+        seal "gcpckms" {
+          project     = "project-0497ef4c-ab4c-42b5-96c"
+          region      = "us-central1"
+          key_ring    = "inosis-vault-keyring"
+          crypto_key  = "vault-unseal-key"
+        }
+
+  dataStorage:
+    enabled: true
+    size: 10Gi
+    # Not: Storage class belirtmezsen GKE varsayılan SSD (standard-rwo) kullanır.
+
+  resources:
+    requests:
+      memory: "256Mi"
+      cpu: "100m"
+
+# 🔥 Injector uygulamalara secret basmak için gereklidir
+injector:
+  enabled: true

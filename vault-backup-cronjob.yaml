@@ -1,0 +1,37 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: vault-raft-backup
+  namespace: inosis-vault
+spec:
+  schedule: "* 3 * * *"  # Her gece 03:00'te çalışır (Crontab formatı)
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          serviceAccountName: vault-sa # Workload Identity yetkisi için kritik!
+          containers:
+          - name: backup-worker
+            image: google/cloud-sdk:slim # Hem gcloud hem gsutil içinde var
+            env:
+            - name: VAULT_ADDR
+              value: "http://vault:8200"
+            command:
+            - /bin/bash
+            - -c
+            - |                        
+              apt-get update && apt-get install -y wget unzip
+              wget https://releases.hashicorp.com/vault/1.13.1/vault_1.13.1_linux_amd64.zip
+              unzip vault_1.13.1_linux_amd64.zip && mv vault /usr/bin/
+              export K8S_TOKEN=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)
+
+              # Vault'a diyoruz ki: "Ben bu podum, işte kimliğim. Bana geçici bir yedekleme yetkisi ver."
+              export VAULT_TOKEN=$(vault write -field=token auth/kubernetes/login role=inosis-role jwt=$K8S_TOKEN)
+              DATE=$(date +%Y%m%d-%H%M)
+              echo "Snapshot oluşturuluyor ve doğrudan GCS'e akıtılıyor..."
+              # '-' işareti çıktıyı ekrana/pipe'a ver demek. 
+              # gsutil cp kısmındaki '-' ise girdiyi pipe'dan al demek.
+              vault operator raft snapshot save - | gsutil cp - gs://inosis-vault-backups-project-0497ef4c-ab4c-42b5-96c/vault-backup-${DATE}.snap
+
+              echo "Yedekleme akışı tamamlandı."
+          restartPolicy: OnFailure

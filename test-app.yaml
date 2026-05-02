@@ -1,0 +1,30 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: inosis-test-app
+  namespace: inosis-vault
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: test-app
+  template:
+    metadata:
+      labels:
+        app: test-app
+      annotations:
+        # BÜYÜ BURADA BAŞLIYOR:
+        vault.hashicorp.com/agent-inject: "true"
+        vault.hashicorp.com/role: "inosis-role"
+        vault.hashicorp.com/agent-inject-secret-dbconfig: "inosis/data/db-config"
+        # Şifreyi dosyaya nasıl yazacağını seçiyoruz:
+        vault.hashicorp.com/agent-inject-template-dbconfig: |
+          {{- with secret "inosis/data/db-config" -}}
+          mysql://{{ .Data.data.username }}:{{ .Data.data.password }}@mysql-host:3306/inosis_db
+          {{- end -}}
+    spec:
+      serviceAccountName: vault-sa
+      containers:
+      - name: alpine
+        image: alpine
+        command: ["sh", "-c", "while true; do sleep 3600; done"]
